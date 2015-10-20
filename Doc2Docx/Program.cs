@@ -36,15 +36,16 @@ namespace Doc2Docx
             if (file.Extension.ToLower() == ".doc" || file.Extension.ToLower() == ".xml" || file.Extension.ToLower() == ".wml")
             {
 
+                Console.WriteLine("Starting document conversion...");
+                
                 //Set the Word Application Window Title
                 string wordAppId = "" + DateTime.Now.Ticks;
-
-                Console.WriteLine("Starting document conversion...");
 
                 Word.Application word = new Word.Application();
                 word.Application.Caption = wordAppId;
                 word.Application.Visible = true;
                 int processId = GetProcessIdByWindowTitle(wordAppId);
+                word.Application.Visible = false;
 
                 try
                 {

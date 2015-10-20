@@ -5,12 +5,12 @@ using System.Runtime.InteropServices;
 // Allgemeine Informationen über eine Assembly werden über die folgenden 
 // Attribute gesteuert. Ändern Sie diese Attributwerte, um die Informationen zu ändern,
 // die mit einer Assembly verknüpft sind.
-[assembly: AssemblyTitle("Doc2Docx")]
-[assembly: AssemblyDescription("WML or DOC to DOCX Converter")]
+[assembly: AssemblyTitle("Softcom Open Source Doc2Docx Converter")]
+[assembly: AssemblyDescription("WML or DOC to DOCX Converter with C#")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Softcom")]
 [assembly: AssemblyProduct("Doc2Docx")]
-[assembly: AssemblyCopyright("Softcom")]
+[assembly: AssemblyCopyright("Copyright ©  2015")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

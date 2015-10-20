@@ -20,10 +20,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Word = Microsoft.Office.Interop.Word;
 using System.Reflection;
 using System.IO;
-using Microsoft.Office.Interop.Word;
+using Word = Microsoft.Office.Interop.Word;
 using System.Diagnostics;
 
 namespace Doc2Docx
@@ -37,15 +36,15 @@ namespace Doc2Docx
             if (file.Extension.ToLower() == ".doc" || file.Extension.ToLower() == ".xml" || file.Extension.ToLower() == ".wml")
             {
 
-                Console.WriteLine("Starting document conversion...");
-                // Get all running winword processes
-                List<int> processIds = new List<int>();
-                foreach (Process process in Process.GetProcessesByName("WINWORD"))
-                {
-                    processIds.Add(process.Id);
-                }
+                //Set the Word Application Window Title
+                string wordAppId = "" + DateTime.Now.Ticks;
 
-                Word._Application word = new Word.Application();
+                Console.WriteLine("Starting document conversion...");
+
+                Word.Application word = new Word.Application();
+                word.Application.Caption = wordAppId;
+                word.Application.Visible = true;
+                int processId = GetProcessIdByWindowTitle(wordAppId);
 
                 try
                 {
@@ -54,7 +53,7 @@ namespace Doc2Docx
 
                     object filename = file.FullName;
                     object newfilename = Path.ChangeExtension(file.FullName, ".docx");
-                    Word._Document document = word.Documents.Open(filename);
+                    Word._Document document = word.Documents.OpenNoRepairDialog(filename);
                     Console.WriteLine("Converting document '{0}' to DOCX.", file);
 
                     document.Convert();
@@ -74,15 +73,11 @@ namespace Doc2Docx
                 finally
                 {
 
-                    // and here is how it fails
-                    foreach (Process process in Process.GetProcessesByName("WINWORD"))
-                    {
-                        if (!processIds.Contains(process.Id))
-                        {
-                            Console.WriteLine("Terminating Winword process with the ID: '{0}'.", process.Id);
-                            process.Kill();
-                        }
-                    }
+                    // Terminate Winword instance by PID.
+                    Console.WriteLine("Terminating Winword process with the Windowtitle '{0}' and the Application ID: '{1}'.", wordAppId, processId);
+                    Process process = Process.GetProcessById(processId);
+                    process.Kill();
+
                 }
             }
             else
@@ -91,5 +86,19 @@ namespace Doc2Docx
             }
 
         }
+
+        public static int GetProcessIdByWindowTitle(string paramWordAppId)
+        {
+            Process[] P_CESSES = Process.GetProcessesByName("WINWORD");
+            for (int p_count = 0; p_count < P_CESSES.Length; p_count++)
+            {
+                if (P_CESSES[p_count].MainWindowTitle.Equals(paramWordAppId))
+                {
+                    return P_CESSES[p_count].Id;
+                }
+            }
+            return Int32.MaxValue;
+        }
+
     }
 }

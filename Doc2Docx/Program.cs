@@ -54,7 +54,23 @@ namespace Doc2Docx
 
                     object filename = file.FullName;
                     object newfilename = Path.ChangeExtension(file.FullName, ".docx");
-                    Word._Document document = word.Documents.OpenNoRepairDialog(filename);
+                    Word._Document document = word.Documents.Open(
+                        filename,
+                        ConfirmConversions: false,
+                        ReadOnly: true,
+                        AddToRecentFiles: false,
+                        PasswordDocument: Type.Missing,
+                        PasswordTemplate: Type.Missing,
+                        Revert: false,
+                        WritePasswordDocument: Type.Missing,
+                        WritePasswordTemplate: Type.Missing,
+                        Format: Type.Missing,
+                        Encoding: Type.Missing,
+                        Visible: false,
+                        OpenAndRepair: false,
+                        DocumentDirection: Type.Missing,
+                        NoEncodingDialog: true,
+                        XMLTransform: Type.Missing);
                     Console.WriteLine("Converting document '{0}' to DOCX.", file);
 
                     document.Convert();

@@ -74,7 +74,7 @@ namespace Doc2Docx
                     Console.WriteLine("Converting document '{0}' to DOCX.", file);
 
                     document.Convert();
-                    document.SaveAs(newfilename, fileformat);
+                    document.SaveAs2(newfilename, fileformat, CompatibilityMode: Word.WdCompatibilityMode.wdWord2007);
                     document.Close();
                     document = null;
 

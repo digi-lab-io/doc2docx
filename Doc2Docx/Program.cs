@@ -18,9 +18,6 @@ limitations under the License.
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Reflection;
 using System.IO;
 using Word = Microsoft.Office.Interop.Word;
 using System.Diagnostics;
@@ -29,96 +26,127 @@ namespace Doc2Docx
 {
     class Program
     {
+        private int _processId;
+        Word.Application _word;
+
         static void Main(string[] args)
         {
-            FileInfo file = new FileInfo(@args[0]);
-
-            if (file.Extension.ToLower() == ".doc" || file.Extension.ToLower() == ".xml" || file.Extension.ToLower() == ".wml")
+            var filesToConvert = new List<string>();
+            var so = SearchOption.TopDirectoryOnly;
+            if(args.Length > 0 && (args[0] == "/r" || args[0] == "-r" || args[0] == "--recursive"))
             {
-
-                Console.WriteLine("Starting document conversion...");
-
-                //Set the Word Application Window Title
-                string wordAppId = "" + DateTime.Now.Ticks;
-
-                Word.Application word = new Word.Application();
-                word.Application.Caption = wordAppId;
-                word.Application.Visible = true;
-                int processId = GetProcessIdByWindowTitle(wordAppId);
-                word.Application.Visible = false;
-
-                try
+                args = args.Skip(1).ToArray();
+                so = SearchOption.AllDirectories;
+            }
+            foreach (var arg in args)
+            {
+                var ext = Path.GetExtension(arg);
+                if (ext != ".doc" && ext != ".xml" && ext != ".wml")
                 {
-
-                    object fileformat = Word.WdSaveFormat.wdFormatXMLDocument;
-
-                    object filename = file.FullName;
-                    object newfilename = Path.ChangeExtension(file.FullName, ".docx");
-                    Word._Document document = word.Documents.Open(
-                        filename,
-                        ConfirmConversions: false,
-                        ReadOnly: true,
-                        AddToRecentFiles: false,
-                        PasswordDocument: Type.Missing,
-                        PasswordTemplate: Type.Missing,
-                        Revert: false,
-                        WritePasswordDocument: Type.Missing,
-                        WritePasswordTemplate: Type.Missing,
-                        Format: Type.Missing,
-                        Encoding: Type.Missing,
-                        Visible: false,
-                        OpenAndRepair: false,
-                        DocumentDirection: Type.Missing,
-                        NoEncodingDialog: true,
-                        XMLTransform: Type.Missing);
-                    Console.WriteLine("Converting document '{0}' to DOCX.", file);
-
-                    document.Convert();
-                    string v = word.Version;
-                    switch (v)
-                    {
-                        case "14.0":
-                        case "15.0":
-                            document.SaveAs2(newfilename, fileformat, CompatibilityMode: Word.WdCompatibilityMode.wdWord2007);
-                            break;
-                        default:
-                            document.SaveAs(newfilename, fileformat);
-                            break;
-                    }
-                    document.Close();
-                    document = null;
-
-                    word.Quit();
-                    word = null;
-                    Console.WriteLine("Success, quitting Word.");
-
+                    Console.WriteLine($"Skipping {arg}: only DOC / WML / XML files permitted.");
+                    continue;
                 }
-                catch (Exception e)
+                if (arg.Contains('*'))
                 {
-                    Console.WriteLine("Error ocurred: {0}", e);
+                    filesToConvert.AddRange(Directory.GetFiles(".", arg, so).Select(_ => Path.GetFullPath(_)));
                 }
-                finally
+                else
                 {
+                    filesToConvert.Add(Path.GetFullPath(arg));
+                }
+                Console.WriteLine($"Accepted {arg}");
+            }
+            if (filesToConvert.Count > 0)
+            {
+                filesToConvert = filesToConvert.Distinct().ToList();
+                new Program(filesToConvert);
+            }
+        }
 
-                    // Terminate Winword instance by PID.
-                    Console.WriteLine("Terminating Winword process with the Windowtitle '{0}' and the Application ID: '{1}'.", wordAppId, processId);
+        internal Program(IEnumerable<string> filesToConvert)
+        {
+            StartWord();
+            try
+            {
+                foreach (var file in filesToConvert)
+                {
                     try
                     {
-                        Process process = Process.GetProcessById(processId);
-                        process.Kill();
+                        var path = Path.GetFullPath(file);
+                        ConvertFile(path);
                     }
-                    catch
+                    catch (Exception e)
                     {
-                        Console.WriteLine("No Winword instance currently running with the give id '{0}', everything fine.", processId);
+                        Console.WriteLine($"{file}: {e.Message}");
                     }
-
                 }
             }
-            else
+            finally
             {
-                Console.WriteLine("Only DOC / WML / XML files possible.");
+                ShutdownWord();
             }
 
+        }
+
+        private void ConvertFile(string filepath)
+        {
+            var fileformat = Word.WdSaveFormat.wdFormatXMLDocument;
+
+            var newfilepath = Path.ChangeExtension(filepath, ".docx");
+            Console.WriteLine($"{Path.GetFileName(filepath)} -> {Path.GetFileName(newfilepath)}");
+            Word._Document document = _word.Documents.Open(
+                filepath,
+                ConfirmConversions: false,
+                ReadOnly: true,
+                AddToRecentFiles: false,
+                PasswordDocument: Type.Missing,
+                PasswordTemplate: Type.Missing,
+                Revert: false,
+                WritePasswordDocument: Type.Missing,
+                WritePasswordTemplate: Type.Missing,
+                Format: Type.Missing,
+                Encoding: Type.Missing,
+                Visible: false,
+                OpenAndRepair: false,
+                DocumentDirection: Type.Missing,
+                NoEncodingDialog: true,
+                XMLTransform: Type.Missing);
+            document.Convert();
+            string v = _word.Version;
+            switch (v)
+            {
+                case "14.0":
+                case "15.0":
+                    document.SaveAs2(newfilepath, fileformat, CompatibilityMode: Word.WdCompatibilityMode.wdWord2007);
+                    break;
+                default:
+                    document.SaveAs(newfilepath, fileformat);
+                    break;
+            }
+            document.Close();
+            document = null;
+        }
+
+
+        void StartWord()
+        {
+            string wordAppId = "" + DateTime.Now.Ticks;
+            _word = new Word.Application();
+            _word.Application.Caption = wordAppId;
+            _word.Application.Visible = true;
+            _processId = GetProcessIdByWindowTitle(wordAppId);
+            _word.Application.Visible = false;
+        }
+
+        private void ShutdownWord()
+        {
+            if (_word != null)
+            {
+                _word.Quit();
+                _word = null;
+                Process process = Process.GetProcessById(_processId);
+                process.Kill();
+            }
         }
 
         public static int GetProcessIdByWindowTitle(string paramWordAppId)
